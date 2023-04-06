@@ -70,13 +70,14 @@ public class PolyFitSum {
         return I;
     }
 
-    private static int getSize(File file) throws FileNotFoundException {
+    private static int getSize(File f) throws FileNotFoundException {
         int count = 0;
-        Scanner s = new Scanner(file);
+        Scanner s = new Scanner(f);
         while (s.hasNext()) {
             count++;
-            s.next();
+            s.nextLine();
         }
+        s.close();
         return count;
     }
 
@@ -97,7 +98,7 @@ public class PolyFitSum {
         }
     }
 
-    public static double evalPoly(double[] coefs, double x) { // Same amt of adds and multis, but got rid of Math.pow()
+    public static double evalPoly(double[] coefs, double x) {
         double result = 0;
         double xPower = 1;
         for (int i = 0; i < coefs.length; i++) {
@@ -107,7 +108,7 @@ public class PolyFitSum {
         return result;
     }
 
-    public static double hornersMethod(double[] coefs, int x) { // Uses factorization, halves the amount of multiplication
+    public static double hornersMethod(double[] coefs, double x) { // Uses factorization, halves the amount of multiplication
 
         int n = coefs.length;
         double result = coefs[n-1];
@@ -123,40 +124,58 @@ public class PolyFitSum {
         
         File f = new File("NoisyPolynomialData.csv");
 
-        double[][] Q = new double[2][2];
-        double[][] U = new double[2][1];
-        int N = getSize(f);
-        Q[0][0] = N;
+        for (int k = 1; k <= 7; k++) {
 
-        Scanner s = new Scanner(f);
-        double[][] io = new double[N][N];
-        int count = 0;
+            double[][] Q = new double[1+k][1+k];
+            double[][] U = new double[1+k][1];
 
-        while (s.hasNext()) {
-            String[] vals = s.nextLine().split(",");
-            double x = Double.parseDouble(vals[0]);
-            double y = Double.parseDouble(vals[1]);
-            io[count][0] = x;
-            io[count++][1] = y;
+            int N = getSize(f);
+            Q[0][0] = N;
 
-        	// create Q
-            Q[0][0]++;
-            Q[0][1] += x;
-            Q[1][0] += x;
-            Q[1][1] += x*x;
+            Scanner s = new Scanner(f);
+            double[][] io = new double[N][N];
+            int count = 0;
 
-            // create U
-            U[0][0] += y;
-            U[1][0] += x*y;
+            while (s.hasNext()) {
+                String[] vals = s.nextLine().split(",");
+                double x = Double.parseDouble(vals[0]);
+                double y = Double.parseDouble(vals[1]);
+                io[count][0] = x;
+                io[count++][1] = y;
+    
+                // fill Q
+                for (int row = 0; row <= k; row++) {
+                    for (int col = 0; col <= k; col++) {
+                        Q[row][col] += Math.pow(x, row+col);
+                    }
+                }
+
+    
+                // fill U
+                for (int row = 0; row <= k; row++) {
+                    Q[row][0] += y*Math.pow(x, row);
+                }
+            }
+    
+            double[][] inverseQ = invert(Q);
+            double[][] ans = matMult(inverseQ, U);
+            double[] c = new double[k];
+            for (int row = 0; row < k; row++) { // need to fix this to read the data properly
+                c[row] = ans[row][0];
+            }
+            
+    
+            
+            System.out.println("Degree " + k + ": \n");
+            for (int i = 0; i < N; i++) {
+                System.out.println(hornersMethod(c, io[i][0]));
+            }
+            System.out.println();
+            
+            printMatrix(ans);
+    
+            s.close();
         }
-
-        Q = invert(Q);
-        double[][] ans = matMult(Q, U);
-        double[] a = new double[]{ans[0][0], ans[1][0]};
-
-        for (int i = 0; i < N; i++) {
-            System.out.println(evalPoly(a, io[i][0]) + " x: " + io[i][0]);
-        }
-        printMatrix(ans);
+        
     }
 }
