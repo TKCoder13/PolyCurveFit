@@ -27,9 +27,7 @@ public class PolyCurveFit {
     }
 
     public static double[][] invert(double[][] A) throws IllegalArgumentException {
-        if (A.length != A[0].length) {
-            throw new IllegalArgumentException("Matrix is not Invertible");
-        }
+        if (A.length != A[0].length) throw new IllegalArgumentException("Matrix is not Invertible");
 
         double[][] I = new double[A.length][A[0].length];
 
@@ -46,9 +44,9 @@ public class PolyCurveFit {
                 while (Math.abs(A[pivotLoc][i]) < 0.0000000001) { // prevents FloatingPointException
                     ++pivotLoc;
                 }
-                pivot = A[pivotLoc][i];
                 swapRows(A, i, pivotLoc);
                 swapRows(I, i, pivotLoc);
+                pivot = A[pivotLoc][i];
                 for (int j = 0; j < A[0].length; j++) {
                     A[i][j] /= pivot;
                     I[i][j] /= pivot;
@@ -59,7 +57,7 @@ public class PolyCurveFit {
                     double multiplier = A[ii][i];
                     for (int j = 0; j < A[0].length; j++) {
                         A[ii][j] -= multiplier * A[i][j];
-                        I[ii][j] -= multiplier * A[i][j];
+                        I[ii][j] -= multiplier * I[i][j]; // mistakes were made here, never forget.
                     }
                 }
             } catch (IndexOutOfBoundsException e) {
@@ -77,6 +75,7 @@ public class PolyCurveFit {
             count++;
             s.next();
         }
+        s.close();
         return count;
     }
 
@@ -107,7 +106,7 @@ public class PolyCurveFit {
         return result;
     }
 
-    public static double hornersMethod(double[] coefs, int x) { // Uses factorization, halves the amount of multiplication
+    public static double hornersMethod(double[] coefs, double x) { // Uses factorization, halves the amount of multiplication
 
         int n = coefs.length;
         double result = coefs[n-1];
@@ -123,10 +122,9 @@ public class PolyCurveFit {
         
         File f = new File("NoisyPolynomialData.csv");
 
-        double[][] Q = new double[2][2];
-        double[][] U = new double[2][1];
-        int N = getSize(f);
-        Q[0][0] = N;
+
+        int N = getSize(f)/2; // for some reason, N is initially double the size
+        
 
         Scanner s = new Scanner(f);
         double[][] io = new double[N][N];
@@ -134,29 +132,57 @@ public class PolyCurveFit {
 
         while (s.hasNext()) {
             String[] vals = s.nextLine().split(",");
-            double x = Double.parseDouble(vals[0]);
-            double y = Double.parseDouble(vals[1]);
-            io[count][0] = x;
-            io[count++][1] = y;
-
-        	// create Q
-            Q[0][0]++;
-            Q[0][1] += x;
-            Q[1][0] += x;
-            Q[1][1] += x*x;
-
-            // create U
-            U[0][0] += y;
-            U[1][0] += x*y;
+            io[count][0] = Double.parseDouble(vals[0]);
+            io[count++][1] = Double.parseDouble(vals[1]);
         }
+        s.close();
 
-        Q = invert(Q);
-        double[][] ans = matMult(Q, U);
-        double[] a = new double[]{ans[0][0], ans[1][0]};
+        for (int deg = 1; deg <= 7; deg++) {
 
-        for (int i = 0; i < N; i++) {
-            System.out.println(evalPoly(a, io[i][0]) + " x: " + io[i][0]);
+            // inc in size as the poly gets bigger (explained in class)
+            double[][] Q = new double[deg+1][deg+1];
+            double[][] U = new double[deg+1][1]; 
+
+            Q[0][0] = N;
+
+            for (int i = 0; i < io.length; i++) {
+                double x = io[i][0];
+                double y = io[i][1];
+
+                // this is needed to create polys, not just lines
+                // I used Coleman's and Reif's portion of the code here, as I was stuck
+                double[] exps = new double[2*(deg+1)];
+                exps[0] = 1;
+                for (int e = 1; e < exps.length; e++) {
+                    exps[e] = exps[e-1] * x;
+                }
+
+                for (int row = 0; row < Q.length; row++) {
+                    // Input data into Q
+                    for (int col = 0; col < Q[0].length; col++) {
+                        if (row != 0 && col != 0) {
+                            Q[row][col] += exps[row + col];
+                        }
+                    }
+
+                    // Input data into U
+                    U[row][0] += y * exps[row];
+                }
+            }
+            
+            Q = invert(Q);
+            double[][] ans = matMult(Q, U);
+            double[] a = new double[ans.length];
+
+            for (int coef = 0; coef < a.length; coef++) {
+                a[coef] = ans[coef][0];
+            }
+
+            System.out.println("\nDegree " + deg);
+            for (int i = 0; i < N; i++) {
+                System.out.println(hornersMethod(a, io[i][0])); //   + " \tgiven (x, y): (" + io[i][0] + ", " + io[i][1] + ")"
+            }
+            printMatrix(ans);
         }
-        printMatrix(ans);
     }
 }
