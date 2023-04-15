@@ -2,7 +2,7 @@ import java.util.Scanner;
 import java.io.File;
 import java.io.FileNotFoundException;
 
-public class PolyFitSum {
+public class PolyCurveFit {
 
     public static double[][] matMult(double[][] A, double[][] B) throws IllegalArgumentException {
         if (A[0].length != B.length) throw new IllegalArgumentException("Mismatched Arrays");
